@@ -296,12 +296,9 @@ when using callbacks function in the fields description, you have three option t
 
 
 
-
-
 ## License
 MIT
 
 
-
 #### Status
-This project is in an early stage of development. Any contribution is welcome :D
+Forked from [jecovier/vue-json-excel](https://github.com/jecovier/vue-json-excel), but the repo didn't seem to be maintained, which is the reason this scoped and enhanced package is being published..
