@@ -31,5 +31,8 @@
   "homepage": "https://github.com/dockerlead/vue-json-excel#readme",
   "dependencies": {
     "downloadjs": "^1.4.7"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
