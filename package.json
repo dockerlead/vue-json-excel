@@ -1,6 +1,6 @@
 {
   "name": "@dockerlead/vue-json-excel",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Download your JSON as an XLS or CSV file directly from the browser",
   "main": "dist/vue-json-excel.umd.js",
   "module": "dist/vue-json-excel.esm.js",
@@ -34,6 +34,8 @@
     "access": "public"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^20.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.4",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^3.4.0",
@@ -41,8 +43,6 @@
     "lint-staged": "^11.1.2",
     "prettier": "2.3.2",
     "rollup": "^1.7.4",
-    "rollup-plugin-commonjs": "^9.2.2",
-    "rollup-plugin-node-resolve": "^4.0.1",
     "rollup-plugin-vue": "^4.7.2",
     "vue-template-compiler": "^2.6.10"
   },
