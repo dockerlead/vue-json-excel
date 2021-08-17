@@ -18,6 +18,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install Deps
         run: npm install
+      - name: Build for distribution
+        run: npm run build:dist
       - name: NPM Publish
         uses: JS-DevTools/npm-publish@v1
         with:
