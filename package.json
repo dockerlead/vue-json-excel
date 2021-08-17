@@ -4,7 +4,8 @@
   "description": "Download your JSON as an excel or CSV file directly from the browser",
   "main": "JsonExcel.vue",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint . --fix",
+    "format": "prettier . --write"
   },
   "repository": {
     "type": "git",
@@ -12,16 +13,10 @@
   },
   "keywords": [
     "vue",
-    "vuejs",
-    "vue2",
-    "Excel",
     "xls",
     "csv",
     "json",
-    "export",
-    "json excel",
-    "download",
-    "component"
+    "export"
   ],
   "author": "Jose Javier Espinoza, Ihsan Oeddin, DockerLead",
   "license": "MIT",
@@ -34,5 +29,11 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "eslint": "^7.32.0",
+    "prettier": "2.3.2"
   }
 }
