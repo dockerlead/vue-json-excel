@@ -1,10 +1,8 @@
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
-function createCommonjsModule(fn, module) {
-	return module = { exports: {} }, fn(module, module.exports), module.exports;
-}
+var download$1 = {exports: {}};
 
-var download = createCommonjsModule(function (module, exports) {
+(function (module, exports) {
 //download.js v4.2, by dandavis; 2008-2016. [MIT] see http://danml.com/download.html for tests/usage
 // v1 landed a FF+Chrome compat way of downloading strings to local un-named files, upgraded to use a hidden frame and optional mime
 // v2 added named files via a[download], msSaveBlob, IE (10+) support, and window.URL support for larger+faster saves than dataURLs
@@ -166,7 +164,9 @@ var download = createCommonjsModule(function (module, exports) {
 		return true;
 	}; /* end download() */
 }));
-});
+}(download$1));
+
+var download = download$1.exports;
 
 //
 
@@ -658,4 +658,4 @@ __vue_render__._withStripped = true;
     undefined
   );
 
-export default JsonExcel;
+export { JsonExcel as default };

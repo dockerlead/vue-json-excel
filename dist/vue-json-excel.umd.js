@@ -1,16 +1,14 @@
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
 	typeof define === 'function' && define.amd ? define(factory) :
-	(global = global || self, global.JsonExcel = factory());
+	(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.JsonExcel = factory());
 }(this, (function () { 'use strict';
 
 	var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
-	function createCommonjsModule(fn, module) {
-		return module = { exports: {} }, fn(module, module.exports), module.exports;
-	}
+	var download$1 = {exports: {}};
 
-	var download = createCommonjsModule(function (module, exports) {
+	(function (module, exports) {
 	//download.js v4.2, by dandavis; 2008-2016. [MIT] see http://danml.com/download.html for tests/usage
 	// v1 landed a FF+Chrome compat way of downloading strings to local un-named files, upgraded to use a hidden frame and optional mime
 	// v2 added named files via a[download], msSaveBlob, IE (10+) support, and window.URL support for larger+faster saves than dataURLs
@@ -172,7 +170,9 @@
 			return true;
 		}; /* end download() */
 	}));
-	});
+	}(download$1));
+
+	var download = download$1.exports;
 
 	//
 
