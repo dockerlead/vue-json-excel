@@ -271,8 +271,18 @@
 	      if (typeof this.beforeGenerate === "function") {
 	        await this.beforeGenerate();
 	      }
+
 	      let data = this.data;
-	      if (typeof this.fetch === "function" || !data) data = await this.fetch();
+
+	      if (!data) {
+	        if(typeof this.fetch === 'function') {
+	          data = await this.fetch();
+	        }
+
+	        if (this.promisedData) {
+	          data = await this.promisedData;
+	        }
+	      }
 
 	      if (!data || !data.length) {
 	        return;
