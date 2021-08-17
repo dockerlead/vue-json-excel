@@ -2,11 +2,13 @@
   "name": "@dockerlead/vue-json-excel",
   "version": "1.0.0",
   "description": "Download your JSON as an excel or CSV file directly from the browser",
-  "main": "JsonExcel.vue",
+  "main": "dist/vue-json-excel.umd.js",
+  "module": "dist/vue-json-excel.esm.js",
   "scripts": {
     "lint": "eslint . --fix",
     "format": "prettier . --write",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "build:dist": "rollup -c ./rollup.config.js"
   },
   "repository": {
     "type": "git",
@@ -37,7 +39,12 @@
     "eslint-plugin-prettier": "^3.4.0",
     "husky": "^7.0.0",
     "lint-staged": "^11.1.2",
-    "prettier": "2.3.2"
+    "prettier": "2.3.2",
+    "rollup": "^1.7.4",
+    "rollup-plugin-commonjs": "^9.2.2",
+    "rollup-plugin-node-resolve": "^4.0.1",
+    "rollup-plugin-vue": "^4.7.2",
+    "vue-template-compiler": "^2.6.10"
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [

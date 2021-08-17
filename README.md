@@ -1,10 +1,10 @@
 # JSON to Excel for VUE 2
 
-Download your JSON data as an excel file directly from the browser. This component it's based on the solution proposed on this thread https://stackoverflow.com/questions/17142427/javascript-to-export-html-table-to-excel
+Download your JSON data as an Excel file directly from the browser. This component is based on the solution proposed on [this thread](https://stackoverflow.com/questions/17142427/javascript-to-export-html-table-to-excel)
 
 ### Important! Extra prompt in Microsoft Excel
 
-**The method implemented in this component use HTML tables to draw the .xls files, Microsoft Excel no longer recognize HTML as native content so will prompt a warning message before open the file. The content will be rendered perfectly but the message can't be avoid.**
+**The method implemented in this component uses HTML tables to draw the .xls files, Microsoft Excel no longer recognize HTML as native content so a warning message will be displayed before opening the file. The content will be rendered perfectly but the message can't be avoided.**
 
 ## Getting started
 
@@ -14,7 +14,7 @@ Get the package:
 npm install vue-json-excel
 ```
 
-Register JsonExcel in your app entrypoint:
+Register JsonExcel in your vue app entry point:
 
 ```js
 import Vue from 'vue';
@@ -34,20 +34,23 @@ In your template
 
 ## Props List
 
-| Name                         |     Type     | Description                                                                                                                                                               |
-| :--------------------------- | :----------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| data                         |    Array     | Data to be exported                                                                                                                                                       |
-| fields                       |    Object    | fields inside the Json Object that you want to export. If no given, all the properties in the Json are exported                                                           |
-| export-fields (exportFields) |    Object    | this prop is used to fix the problem with other components that use the variable fields, like vee-validate. exportFields works exactly like fields                        |
-| type                         |    string    | mime type [xls, csv], default: xls                                                                                                                                        |
-| name                         |    string    | filename to export, deault: data.xls                                                                                                                                      |
-| title                        | string/Array | Title(s) for the data, could be a string or an array of strings (multiple titles)                                                                                         |
-| footer                       | string/Array | Footer(s) for the data, could be a string or an array of strings (multiple footers)                                                                                       |
-| default-value (defaultValue) |    string    | Use as fallback when the row has no field values, default: ''                                                                                                             |
-| worksheet                    |    string    | Name of the worksheet tab. default: 'Sheet1'                                                                                                                              |
-| fetch                        |   Function   | Callback to fetch data before download, if it's set it runs immediately after mouse pressed and before download process. IMPORTANT: only works if no data prop is defined |
-| before-generate              |   Function   | Callback to call a method right before the generate / fetch data, eg:show loading progress                                                                                |
-| before-finish                |   Function   | Callback to call a method right before the download box pops out, eg:hide loading progress                                                                                |
+| Name                         |     Type     | Description                                                                                                                                                                                              | Default  |
+| :--------------------------- | :----------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------: |
+| data                         |    Array     | Data to be exported.                                                                                                                                                                                     |
+| fields                       |    Object    | Fields inside the JSON Object that you want to export. If none provided, all properties in the JSON will be exported.                                                                                    |
+| export-fields (exportFields) |    Object    | Used to fix the problem with other components that use the variable fields, like vee-validate. exportFields works exactly like fields                                                                    |
+| type                         |    string    | Mime type [xls, csv]                                                                                                                                                                                     |   xls    |
+| name                         |    string    | File name to export.                                                                                                                                                                                     | data.xls |
+| header                       | string/Array | Title(s) for the data. Can be a string (one title) or an array of strings (multiple titles).                                                                                                             |
+| title(deprecated)            | string/Array | same as header, title is maintained for retro-compatibility purposes but its use is not recommended due to the conflict with the HTML5 title attribute.                                                  |
+| footer                       | string/Array | Footer(s) for the data. Can be a string (one footer) or an array of strings (multiple footers).                                                                                                          |
+| default-value (defaultValue) |    string    | Use as fallback when the row has no field values.                                                                                                                                                        |    ''    |
+| worksheet                    |    string    | Name of the worksheet tab.                                                                                                                                                                               | 'Sheet1' |
+| fetch                        |   Function   | Callback to fetch data before download, if it's set it runs immediately after mouse pressed and before download process.<br>IMPORTANT: only works if no data prop is defined.                            |
+| before-generate              |   Function   | Callback to call a method right before the generate / fetch data, eg:show loading progress                                                                                                               |
+| before-finish                |   Function   | Callback to call a method right before the download box pops out, eg:hide loading progress                                                                                                               |
+| stringifyLongNum             |   Boolean    | stringify long number and decimal(solve the problem of loss of digital accuracy), default: false                                                                                                         |
+| escapeCsv                    |   Boolean    | This escapes CSV values in order to fix some excel problems with number fields. But this will wrap every csv data with **="** and **"**, to avoid that you have to set this prop to false. default: True |
 
 ## Example
 
@@ -121,10 +124,8 @@ In your HTML call it like
 
 REQUIRED
 
-- json_data: Contains the data you want to export,
-- json_fields: You can select what fields to export, especify nested data and assign labels to the fields
-  the key is the label, the value is the JSON field. This will export the field data 'as is'.
-  If you need to customize the the exported data you can define a callback function. Thanks to @gucastiliao.
+- json_data: Contains the data you want to export.
+- json_fields: You can select what fields to export. Specify nested data and assign labels to the fields. The key is the label, the value is the JSON field. This will export the field data 'as is'. If you need to customize the the exported data you can define a callback function. Thanks to @gucastiliao.
 
 ```js
 let json_fields = {
@@ -140,9 +141,18 @@ let json_fields = {
 };
 ```
 
+json_fields is a object that represents which columns will be exported. If no object is provided, the component will be use the first object in your data array to extract the keys as columns names. Json field example:
+
+```
+:export-fields="{
+    'Human friendly name': '_name_field_from_json',
+    'user's last name': '_last_name_text'
+}"
+```
+
 ## Export CSV
 
-To export JSON to CSV file just add the prop type with value "csv":
+To export JSON as a CSV file, just add the prop `type` with a value of "csv":
 
 ```html
 <download-excel
@@ -152,11 +162,11 @@ To export JSON to CSV file just add the prop type with value "csv":
   type="csv"
   name="filename.xls"
 >
-  Download Excel (you can customize this with html code!)
+  Download CSV (you can customize this with html code!)
 </download-excel>
 ```
 
-## Multi-line values will appear in a single cell in Excel
+## Multi-line values will appear in a single cell
 
 A single text value in the data that contains newline characters will appear as a single cell in Excel. This avoids the undesired behavior of multi-line values getting split into multiple cells that must be merged before using data filters and pivot tables.
 
@@ -165,7 +175,7 @@ For example:
 ```html
 <template>
   <div>
-    <json-excel :data="dataForExcel"></json-excel>
+    <json-excel :data="dataForExcel" />
   </div>
 </template>
 <script>
@@ -196,7 +206,7 @@ For example:
 
 ## Fetch Data on Demand
 
-In case you need to fetch data from the server, you could use the fetch prop that allows you to define a callback function that is executed when your user click the download button. This function has to return a json value containing the data to export. A basic use case is:
+In case you need to fetch data from the server, you could use the fetch prop that allows you to define a callback function that is executed when your user click the download button. This function has to return a JSON value containing the data to export. A basic use case is:
 
 ```js
 <template>
@@ -205,12 +215,11 @@ In case you need to fetch data from the server, you could use the fetch prop tha
     <hr>
     <h2>Fetch Example</h2>
     <downloadexcel
-      class = "btn"
-      :fetch   = "fetchData"
-      :fields = "json_fields"
+      class            = "btn"
+      :fetch           = "fetchData"
+      :fields          = "json_fields"
       :before-generate = "startDownload"
-      :before-finish = "finishDownload"
-      type    = "csv">
+      :before-finish   = "finishDownload">
       Download Excel
     </downloadexcel>
   </div>
@@ -253,9 +262,9 @@ export default {
 
 ## Using callbacks
 
-when using callbacks function in the fields description, you have three option to retrieve data:
+when using callback functions in the fields description, you have three option to retrieve data:
 
-- **field: 'path.to.nested.property'** you can retrieve an especific value using the nested property notation.
+- **field: 'path.to.nested.property'** you can retrieve a specific value using the nested property notation.
 
 ```js
     json_fields: {
@@ -271,10 +280,10 @@ when using callbacks function in the fields description, you have three option t
     },
 ```
 
-- **field: 'define.nested.object'** you can retrieve an nested object too
+- **field: 'define.nested.object'** you can retrieve a nested object too.
 
 ```js
-    json_fields: {
+    json_fields: {s
         'Complete name': 'name',
         'City': 'city',
         'Telephone': 'phone.mobile',
@@ -287,7 +296,7 @@ when using callbacks function in the fields description, you have three option t
     },
 ```
 
-- Or **get the whole row** if field it's undefined.
+- Or **get the whole row** if field is undefined.
 
 ```js
     json_fields: {

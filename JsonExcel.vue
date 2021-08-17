@@ -12,7 +12,7 @@ export default {
     // mime type [xls, csv]
     type: {
       type: String,
-      default: 'xls',
+      default: "xls",
     },
     // Json to download
     data: {
@@ -24,22 +24,22 @@ export default {
     // if no given, all the properties in the Json are exported
     fields: {
       type: Object,
-      required: false,
+      default: () => null,
     },
     // this prop is used to fix the problem with other components that use the
     // variable fields, like vee-validate. exportFields works exactly like fields
     exportFields: {
       type: Object,
-      required: false,
+      default: () => null,
     },
     // Use as fallback when the row has no field values
     defaultValue: {
       type: String,
       required: false,
-      default: '',
+      default: "",
     },
     // Title(s) for the data, could be a string or an array of strings (multiple titles)
-    title: {
+    header: {
       default: null,
     },
     // Footer(s) for the data, could be a string or an array of strings (multiple footers)
@@ -49,7 +49,7 @@ export default {
     // filename to export
     name: {
       type: String,
-      default: 'data.xls',
+      default: "data.xls",
     },
     fetch: {
       type: Function,
@@ -63,7 +63,7 @@ export default {
     },
     worksheet: {
       type: String,
-      default: 'Sheet1',
+      default: "Sheet1",
     },
     //event before generate was called
     beforeGenerate: {
@@ -72,6 +72,16 @@ export default {
     //event before download pops up
     beforeFinish: {
       type: Function,
+    },
+    // Determine if CSV Data should be escaped
+    escapeCsv: {
+      type: Boolean,
+      default: true,
+    },
+    // long number stringify
+    stringifyLongNum: {
+      type: Boolean,
+      default: false,
     },
   },
   computed: {
@@ -82,22 +92,26 @@ export default {
     },
 
     downloadFields() {
-      if (this.fields !== undefined) return this.fields;
+      if (this.fields) return this.fields;
 
-      if (this.exportFields !== undefined) return this.exportFields;
+      if (this.exportFields) return this.exportFields;
     },
   },
   methods: {
     async generate() {
-      if (typeof this.beforeGenerate === 'function') {
+      if (typeof this.beforeGenerate === "function") {
         await this.beforeGenerate();
       }
+
       let data = this.data;
+
       if (!data) {
-        if (typeof this.fetch === 'function') data = await this.fetch();
+        if(typeof this.fetch === 'function') {
+          data = await this.fetch();
+        }
 
         if (this.promisedData) {
-          data = await this.promisedData;
+          data = await this.promisedData
         }
       }
 
@@ -123,7 +137,7 @@ export default {
 		*/
     export: async function (data, filename, mime) {
       let blob = this.base64ToBlob(data, mime);
-      if (typeof this.beforeFinish === 'function') await this.beforeFinish();
+      if (typeof this.beforeFinish === "function") await this.beforeFinish();
       download(blob, filename, mime);
     },
     /*
@@ -141,10 +155,11 @@ export default {
       let _self = this;
 
       //Header
-      if (this.title != null) {
+      const header = this.header || this.$attrs.title;
+      if (header) {
         xlsData += this.parseExtraData(
-          this.title,
-          '<tr><th colspan="' + colspan + '">${data}</th></tr>',
+          header,
+          '<tr><th colspan="' + colspan + '">${data}</th></tr>'
         );
       }
 
@@ -157,11 +172,16 @@ export default {
       xlsData += '</thead>';
 
       //Data
-      xlsData += '<tbody>';
+      xlsData += "<tbody>";
       data.map(function (item, index) {
-        xlsData += '<tr>';
+        xlsData += "<tr>";
         for (let key in item) {
-          xlsData += '<td>' + _self.valueReformattedForMultilines(item[key]) + '</td>';
+          xlsData +=
+            "<td>" +
+            _self.preprocessLongNum(
+              _self.valueReformattedForMultilines(item[key])
+            ) +
+            "</td>";
         }
         xlsData += '</tr>';
       });
@@ -177,7 +197,9 @@ export default {
         xlsData += '</tfoot>';
       }
 
-      return xlsTemp.replace('${table}', xlsData).replace('${worksheet}', this.worksheet);
+      return xlsTemp
+        .replace("${table}", xlsData)
+        .replace("${worksheet}", this.worksheet);
     },
     /*
 		jsonToCSV
@@ -185,11 +207,15 @@ export default {
 		Transform json data into an CSV file.
 		*/
     jsonToCSV(data) {
+      let _self = this;
       var csvData = [];
+
       //Header
-      if (this.title != null) {
-        csvData.push(this.parseExtraData(this.title, '${data}\r\n'));
+      const header = this.header || this.$attrs.title;
+      if (header) {
+        csvData.push(this.parseExtraData(header, "${data}\r\n"));
       }
+
       //Fields
       for (let key in data[0]) {
         csvData.push(key);
@@ -200,9 +226,14 @@ export default {
       //Data
       data.map(function (item) {
         for (let key in item) {
-          let escapedCSV = '="' + item[key] + '"'; // cast Numbers to string
-          if (escapedCSV.match(/[,"\n]/)) {
-            escapedCSV = '"' + escapedCSV.replace(/\"/g, '""') + '"';
+          let escapedCSV = item[key] + "";
+          // Escaped CSV data to string to avoid problems with numbers or other types of values
+          // this is controlled by the prop escapeCsv
+          if (_self.escapeCsv) {
+            escapedCSV = '="' + escapedCSV + '"'; // cast Numbers to string
+            if (escapedCSV.match(/[,"\n]/)) {
+              escapedCSV = '"' + escapedCSV.replace(/\"/g, '""') + '"';
+            }
           }
           csvData.push(escapedCSV);
           csvData.push(',');
@@ -256,7 +287,8 @@ export default {
       let parseData = '';
       if (Array.isArray(extraData)) {
         for (var i = 0; i < extraData.length; i++) {
-          parseData += format.replace('${data}', extraData[i]);
+          if (extraData[i])
+            parseData += format.replace("${data}", extraData[i]);
         }
       } else {
         parseData += format.replace('${data}', extraData);
@@ -265,15 +297,17 @@ export default {
     },
 
     getValue(key, item) {
-      const field = typeof key !== 'object' ? key : key.field;
-      let indexes = typeof field !== 'string' ? [] : field.split('.');
+      const field = typeof key !== "object" ? key : key.field;
+      let indexes = typeof field !== "string" ? [] : field.split(".");
       let value = this.defaultValue;
 
       if (!field) value = item;
-      else if (indexes.length > 1) value = this.getValueFromNestedItem(item, indexes);
+      else if (indexes.length > 1)
+        value = this.getValueFromNestedItem(item, indexes);
       else value = this.parseValue(item[field]);
 
-      if (key.hasOwnProperty('callback')) value = this.getValueFromCallback(value, key.callback);
+      if (key.hasOwnProperty("callback"))
+        value = this.getValueFromCallback(value, key.callback);
 
       return value;
     },
@@ -282,10 +316,22 @@ export default {
     convert values with newline \n characters into <br/>
     */
     valueReformattedForMultilines(value) {
-      if (typeof value == 'string') return value.replace(/\n/gi, '<br/>');
+      if (typeof value == "string") return value.replace(/\n/gi, "<br/>");
       else return value;
     },
-
+    preprocessLongNum(value) {
+      if (this.stringifyLongNum) {
+        if (String(value).startsWith("0x")) {
+          return value;
+        }
+        if (!isNaN(value) && value != "") {
+          if (value > 99999999999 || value < 0.0000000000001) {
+            return '="' + value + '"';
+          }
+        }
+      }
+      return value;
+    },
     getValueFromNestedItem(item, indexes) {
       let nestedItem = item;
       for (let index of indexes) {
@@ -295,12 +341,14 @@ export default {
     },
 
     getValueFromCallback(item, callback) {
-      if (typeof callback !== 'function') return this.defaultValue;
+      if (typeof callback !== "function") return this.defaultValue;
       const value = callback(item);
       return this.parseValue(value);
     },
     parseValue(value) {
-      return value || value === 0 || typeof value === 'boolean' ? value : this.defaultValue;
+      return value || value === 0 || typeof value === "boolean"
+        ? value
+        : this.defaultValue;
     },
     base64ToBlob(data, mime) {
       let base64 = window.btoa(window.unescape(encodeURIComponent(data)));
