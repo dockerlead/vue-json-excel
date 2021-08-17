@@ -168,6 +168,135 @@ var download$1 = {exports: {}};
 
 var download = download$1.exports;
 
+const errorMissingSeparator = 'Missing separator option.',
+  errorNotAnArray = 'Your JSON must be an array or an object.',
+  errorItemNotAnObject = 'Item in array is not an object: {0}';
+
+function flattenArray(array, ancestors) {
+  ancestors || (ancestors = []);
+
+  function combineKeys(a, b) {
+    let result = a.slice(0);
+    if (!Array.isArray(b)) return result;
+    for (let i = 0; i < b.length; i++) if (result.indexOf(b[i]) === -1) result.push(b[i]);
+    return result;
+  }
+
+  function extend(target, source) {
+    target = target || {};
+    for (let prop in source) {
+      if (typeof source[prop] === 'object') {
+        target[prop] = extend(target[prop], source[prop]);
+      } else {
+        target[prop] = source[prop];
+      }
+    }
+    return target;
+  }
+
+  let rows = [];
+  for (let i = 0; i < array.length; i++) {
+    let o = array[i],
+      row = {},
+      orows = {},
+      count = 1;
+
+    if (o !== undefined && o !== null && (!isObject(o) || Array.isArray(o)))
+      throw errorItemNotAnObject.replace('{0}', JSON.stringify(o));
+
+    let keys = getKeys(o);
+    for (let k = 0; k < keys.length; k++) {
+      let value = o[keys[k]],
+        keyChain = combineKeys(ancestors, [keys[k]]),
+        key = keyChain.join('.');
+      if (Array.isArray(value)) {
+        orows[key] = flattenArray(value, keyChain);
+        count += orows[key].length;
+      } else {
+        row[key] = value;
+      }
+    }
+
+    if (count == 1) {
+      rows.push(row);
+    } else {
+      let keys = getKeys(orows);
+      for (let k = 0; k < keys.length; k++) {
+        let key = keys[k];
+        for (let r = 0; r < orows[key].length; r++) {
+          rows.push(extend(extend({}, row), orows[key][r]));
+        }
+      }
+    }
+  }
+  return rows;
+}
+
+function isObject(o) {
+  return o && typeof o == 'object';
+}
+
+function getKeys(o) {
+  if (!isObject(o)) return [];
+  return Object.keys(o);
+}
+
+function convert(data, options) {
+  options || (options = {});
+
+  if (!isObject(data)) throw errorNotAnArray;
+  if (!Array.isArray(data)) data = [data];
+
+  let separator = options.separator || ',';
+  if (!separator) throw errorMissingSeparator;
+
+  let flatten = options.flatten || false;
+  if (flatten) data = flattenArray(data);
+
+  let allKeys = [],
+    allRows = [];
+  for (let i = 0; i < data.length; i++) {
+    let o = data[i],
+      row = {};
+    if (o !== undefined && o !== null && (!isObject(o) || Array.isArray(o)))
+      throw errorItemNotAnObject.replace('{0}', JSON.stringify(o));
+    let keys = getKeys(o);
+    for (let k = 0; k < keys.length; k++) {
+      let key = keys[k];
+      if (allKeys.indexOf(key) === -1) allKeys.push(key);
+      let value = o[key];
+      if (value === undefined && value === null) continue;
+      if (typeof value == 'string') {
+        row[key] = `"${value.replace(/"/g, options.output_csvjson_variant ? '\\"' : '""')}"`;
+        if (options.output_csvjson_variant) row[key] = row[key].replace(/\n/g, '\\n');
+      } else {
+        row[key] = JSON.stringify(value);
+        if (!options.output_csvjson_variant && (isObject(value) || Array.isArray(value)))
+          row[key] = `"${row[key].replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
+      }
+    }
+    allRows.push(row);
+  }
+
+  let keyValues = [];
+  for (let i = 0; i < allKeys.length; i++) {
+    keyValues.push(`"${allKeys[i].replace(/"/g, options.output_csvjson_variant ? '\\"' : '""')}"`);
+  }
+
+  let csv = `${keyValues.join(separator)}\n`;
+  for (let r = 0; r < allRows.length; r++) {
+    let row = allRows[r],
+      rowArray = [];
+    for (let k = 0; k < allKeys.length; k++) {
+      let key = allKeys[k];
+      rowArray.push(row[key] || (options.output_csvjson_variant ? 'null' : ''));
+    }
+    csv += rowArray.join(separator) + (r < allRows.length - 1 ? '\n' : '');
+  }
+
+  return csv;
+}
+
 //
 
 var script = {
@@ -175,9 +304,9 @@ var script = {
     // mime type [xls, csv]
     type: {
       type: String,
-      default: "xls",
+      default: 'xls',
     },
-    // Json to download
+    // json to download
     data: {
       type: Array,
       required: false,
@@ -195,24 +324,24 @@ var script = {
       type: Object,
       default: () => null,
     },
-    // Use as fallback when the row has no field values
+    // use as fallback when the row has no field values
     defaultValue: {
       type: String,
       required: false,
-      default: "",
+      default: '',
     },
-    // Title(s) for the data, could be a string or an array of strings (multiple titles)
+    // title(s) for the data, could be a string or an array of strings (multiple titles)
     header: {
       default: null,
     },
-    // Footer(s) for the data, could be a string or an array of strings (multiple footers)
+    // footer(s) for the data, could be a string or an array of strings (multiple footers)
     footer: {
       default: null,
     },
     // filename to export
     name: {
       type: String,
-      default: "data.xls",
+      default: 'data.xls',
     },
     fetch: {
       type: Function,
@@ -226,20 +355,15 @@ var script = {
     },
     worksheet: {
       type: String,
-      default: "Sheet1",
+      default: 'Sheet1',
     },
-    //event before generate was called
+    // event before generate was called
     beforeGenerate: {
       type: Function,
     },
-    //event before download pops up
+    // event before download pops up
     beforeFinish: {
       type: Function,
-    },
-    // Determine if CSV Data should be escaped
-    escapeCsv: {
-      type: Boolean,
-      default: true,
     },
     // long number stringify
     stringifyLongNum: {
@@ -262,14 +386,14 @@ var script = {
   },
   methods: {
     async generate() {
-      if (typeof this.beforeGenerate === "function") {
+      if (typeof this.beforeGenerate === 'function') {
         await this.beforeGenerate();
       }
 
       let data = this.data;
 
       if (!data) {
-        if(typeof this.fetch === 'function') {
+        if (typeof this.fetch === 'function') {
           data = await this.fetch();
         }
 
@@ -295,21 +419,21 @@ var script = {
       }
       return this.export(this.jsonToXLS(json), this.name, 'application/vnd.ms-excel');
     },
-    /*
-		Use downloadjs to generate the download link
-		*/
+
+    // use downloadjs to generate the download link
     export: async function (data, filename, mime) {
       let blob = this.base64ToBlob(data, mime);
-      if (typeof this.beforeFinish === "function") await this.beforeFinish();
+      if (typeof this.beforeFinish === 'function') await this.beforeFinish();
       download(blob, filename, mime);
     },
+
     /*
-		jsonToXLS
-		---------------
-		Transform json data into an xml document with MS Excel format, sadly
-		it shows a prompt when it opens, that is a default behavior for
-		Microsoft office and cannot be avoided. It's recommended to use CSV format instead.
-		*/
+      jsonToXLS
+      ---------------
+      Transform json data into an xml document with MS Excel format, sadly
+      it shows a prompt when it opens, that is a default behavior for
+      Microsoft office and cannot be avoided. It's recommended to use CSV format instead.
+      */
     jsonToXLS(data) {
       let xlsTemp =
         '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta name=ProgId content=Excel.Sheet> <meta name=Generator content="Microsoft Excel 11"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--><style>br {mso-data-placement: same-cell;}</style></head><body><table>${table}</table></body></html>';
@@ -322,7 +446,7 @@ var script = {
       if (header) {
         xlsData += this.parseExtraData(
           header,
-          '<tr><th colspan="' + colspan + '">${data}</th></tr>'
+          '<tr><th colspan="' + colspan + '">${data}</th></tr>',
         );
       }
 
@@ -335,16 +459,14 @@ var script = {
       xlsData += '</thead>';
 
       //Data
-      xlsData += "<tbody>";
+      xlsData += '<tbody>';
       data.map(function (item, index) {
-        xlsData += "<tr>";
+        xlsData += '<tr>';
         for (let key in item) {
           xlsData +=
-            "<td>" +
-            _self.preprocessLongNum(
-              _self.valueReformattedForMultilines(item[key])
-            ) +
-            "</td>";
+            '<td>' +
+            _self.preprocessLongNum(_self.valueReformattedForMultilines(item[key])) +
+            '</td>';
         }
         xlsData += '</tr>';
       });
@@ -360,61 +482,33 @@ var script = {
         xlsData += '</tfoot>';
       }
 
-      return xlsTemp
-        .replace("${table}", xlsData)
-        .replace("${worksheet}", this.worksheet);
+      return xlsTemp.replace('${table}', xlsData).replace('${worksheet}', this.worksheet);
     },
+
     /*
-		jsonToCSV
-		---------------
-		Transform json data into an CSV file.
-		*/
+      jsonToCSV
+      ---------------
+      Transform json data into a CSV file.
+      */
     jsonToCSV(data) {
-      let _self = this;
-      var csvData = [];
+      let csvData = [];
 
-      //Header
-      const header = this.header || this.$attrs.title;
-      if (header) {
-        csvData.push(this.parseExtraData(header, "${data}\r\n"));
-      }
-
-      //Fields
-      for (let key in data[0]) {
-        csvData.push(key);
-        csvData.push(',');
-      }
-      csvData.pop();
-      csvData.push('\r\n');
       //Data
-      data.map(function (item) {
-        for (let key in item) {
-          let escapedCSV = item[key] + "";
-          // Escaped CSV data to string to avoid problems with numbers or other types of values
-          // this is controlled by the prop escapeCsv
-          if (_self.escapeCsv) {
-            escapedCSV = '="' + escapedCSV + '"'; // cast Numbers to string
-            if (escapedCSV.match(/[,"\n]/)) {
-              escapedCSV = '"' + escapedCSV.replace(/\"/g, '""') + '"';
-            }
-          }
-          csvData.push(escapedCSV);
-          csvData.push(',');
-        }
-        csvData.pop();
-        csvData.push('\r\n');
-      });
+      const convertedData = convert(data);
+      csvData.push(convertedData);
+
       //Footer
       if (this.footer != null) {
         csvData.push(this.parseExtraData(this.footer, '${data}\r\n'));
       }
       return csvData.join('');
     },
+
     /*
-		getProcessedJson
-		---------------
-		Get only the data to export, if no fields are set return all the data
-		*/
+      getProcessedJson
+      ---------------
+      Get only the data to export, if no fields are set return all the data
+      */
     getProcessedJson(data, header) {
       let keys = this.getKeys(data, header);
       let newData = [];
@@ -442,16 +536,15 @@ var script = {
       return keys;
     },
     /*
-		parseExtraData
-		---------------
-		Parse title and footer attribute to the csv format
-		*/
+      parseExtraData
+      ---------------
+      Parse title and footer attribute to the csv format
+      */
     parseExtraData(extraData, format) {
       let parseData = '';
       if (Array.isArray(extraData)) {
         for (var i = 0; i < extraData.length; i++) {
-          if (extraData[i])
-            parseData += format.replace("${data}", extraData[i]);
+          if (extraData[i]) parseData += format.replace('${data}', extraData[i]);
         }
       } else {
         parseData += format.replace('${data}', extraData);
@@ -460,34 +553,30 @@ var script = {
     },
 
     getValue(key, item) {
-      const field = typeof key !== "object" ? key : key.field;
-      let indexes = typeof field !== "string" ? [] : field.split(".");
+      const field = typeof key !== 'object' ? key : key.field;
+      let indexes = typeof field !== 'string' ? [] : field.split('.');
       let value = this.defaultValue;
 
       if (!field) value = item;
-      else if (indexes.length > 1)
-        value = this.getValueFromNestedItem(item, indexes);
+      else if (indexes.length > 1) value = this.getValueFromNestedItem(item, indexes);
       else value = this.parseValue(item[field]);
 
-      if (key.hasOwnProperty("callback"))
-        value = this.getValueFromCallback(value, key.callback);
+      if (key.hasOwnProperty('callback')) value = this.getValueFromCallback(value, key.callback);
 
       return value;
     },
 
-    /*
-    convert values with newline \n characters into <br/>
-    */
+    // Convert values with newline \n characters into <br/>
     valueReformattedForMultilines(value) {
-      if (typeof value == "string") return value.replace(/\n/gi, "<br/>");
+      if (typeof value == 'string') return value.replace(/\n/gi, '<br/>');
       else return value;
     },
     preprocessLongNum(value) {
       if (this.stringifyLongNum) {
-        if (String(value).startsWith("0x")) {
+        if (String(value).startsWith('0x')) {
           return value;
         }
-        if (!isNaN(value) && value != "") {
+        if (!isNaN(value) && value != '') {
           if (value > 99999999999 || value < 0.0000000000001) {
             return '="' + value + '"';
           }
@@ -504,14 +593,12 @@ var script = {
     },
 
     getValueFromCallback(item, callback) {
-      if (typeof callback !== "function") return this.defaultValue;
+      if (typeof callback !== 'function') return this.defaultValue;
       const value = callback(item);
       return this.parseValue(value);
     },
     parseValue(value) {
-      return value || value === 0 || typeof value === "boolean"
-        ? value
-        : this.defaultValue;
+      return value || value === 0 || typeof value === 'boolean' ? value : this.defaultValue;
     },
     base64ToBlob(data, mime) {
       let base64 = window.btoa(window.unescape(encodeURIComponent(data)));
@@ -526,90 +613,80 @@ var script = {
   }, // end methods
 };
 
-function normalizeComponent(template, style, script, scopeId, isFunctionalTemplate, moduleIdentifier
-/* server only */
-, shadowMode, createInjector, createInjectorSSR, createInjectorShadow) {
-  if (typeof shadowMode !== 'boolean') {
-    createInjectorSSR = createInjector;
-    createInjector = shadowMode;
-    shadowMode = false;
-  } // Vue.extend constructor export interop.
-
-
-  var options = typeof script === 'function' ? script.options : script; // render functions
-
-  if (template && template.render) {
-    options.render = template.render;
-    options.staticRenderFns = template.staticRenderFns;
-    options._compiled = true; // functional template
-
-    if (isFunctionalTemplate) {
-      options.functional = true;
+function normalizeComponent(template, style, script, scopeId, isFunctionalTemplate, moduleIdentifier /* server only */, shadowMode, createInjector, createInjectorSSR, createInjectorShadow) {
+    if (typeof shadowMode !== 'boolean') {
+        createInjectorSSR = createInjector;
+        createInjector = shadowMode;
+        shadowMode = false;
     }
-  } // scopedId
-
-
-  if (scopeId) {
-    options._scopeId = scopeId;
-  }
-
-  var hook;
-
-  if (moduleIdentifier) {
-    // server build
-    hook = function hook(context) {
-      // 2.3 injection
-      context = context || // cached call
-      this.$vnode && this.$vnode.ssrContext || // stateful
-      this.parent && this.parent.$vnode && this.parent.$vnode.ssrContext; // functional
-      // 2.2 with runInNewContext: true
-
-      if (!context && typeof __VUE_SSR_CONTEXT__ !== 'undefined') {
-        context = __VUE_SSR_CONTEXT__;
-      } // inject component styles
-
-
-      if (style) {
-        style.call(this, createInjectorSSR(context));
-      } // register component module identifier for async chunk inference
-
-
-      if (context && context._registeredComponents) {
-        context._registeredComponents.add(moduleIdentifier);
-      }
-    }; // used by ssr in case component is cached and beforeCreate
-    // never gets called
-
-
-    options._ssrRegister = hook;
-  } else if (style) {
-    hook = shadowMode ? function () {
-      style.call(this, createInjectorShadow(this.$root.$options.shadowRoot));
-    } : function (context) {
-      style.call(this, createInjector(context));
-    };
-  }
-
-  if (hook) {
-    if (options.functional) {
-      // register for functional component in vue file
-      var originalRender = options.render;
-
-      options.render = function renderWithStyleInjection(h, context) {
-        hook.call(context);
-        return originalRender(h, context);
-      };
-    } else {
-      // inject component registration as beforeCreate hook
-      var existing = options.beforeCreate;
-      options.beforeCreate = existing ? [].concat(existing, hook) : [hook];
+    // Vue.extend constructor export interop.
+    const options = typeof script === 'function' ? script.options : script;
+    // render functions
+    if (template && template.render) {
+        options.render = template.render;
+        options.staticRenderFns = template.staticRenderFns;
+        options._compiled = true;
+        // functional template
+        if (isFunctionalTemplate) {
+            options.functional = true;
+        }
     }
-  }
-
-  return script;
+    // scopedId
+    if (scopeId) {
+        options._scopeId = scopeId;
+    }
+    let hook;
+    if (moduleIdentifier) {
+        // server build
+        hook = function (context) {
+            // 2.3 injection
+            context =
+                context || // cached call
+                    (this.$vnode && this.$vnode.ssrContext) || // stateful
+                    (this.parent && this.parent.$vnode && this.parent.$vnode.ssrContext); // functional
+            // 2.2 with runInNewContext: true
+            if (!context && typeof __VUE_SSR_CONTEXT__ !== 'undefined') {
+                context = __VUE_SSR_CONTEXT__;
+            }
+            // inject component styles
+            if (style) {
+                style.call(this, createInjectorSSR(context));
+            }
+            // register component module identifier for async chunk inference
+            if (context && context._registeredComponents) {
+                context._registeredComponents.add(moduleIdentifier);
+            }
+        };
+        // used by ssr in case component is cached and beforeCreate
+        // never gets called
+        options._ssrRegister = hook;
+    }
+    else if (style) {
+        hook = shadowMode
+            ? function (context) {
+                style.call(this, createInjectorShadow(context, this.$root.$options.shadowRoot));
+            }
+            : function (context) {
+                style.call(this, createInjector(context));
+            };
+    }
+    if (hook) {
+        if (options.functional) {
+            // register for functional component in vue file
+            const originalRender = options.render;
+            options.render = function renderWithStyleInjection(h, context) {
+                hook.call(context);
+                return originalRender(h, context);
+            };
+        }
+        else {
+            // inject component registration as beforeCreate hook
+            const existing = options.beforeCreate;
+            options.beforeCreate = existing ? [].concat(existing, hook) : [hook];
+        }
+    }
+    return script;
 }
-
-var normalizeComponent_1 = normalizeComponent;
 
 /* script */
 const __vue_script__ = script;
@@ -645,17 +722,21 @@ __vue_render__._withStripped = true;
   
   /* style inject SSR */
   
+  /* style inject shadow dom */
+  
 
   
-  var JsonExcel = normalizeComponent_1(
+  const __vue_component__ = /*#__PURE__*/normalizeComponent(
     { render: __vue_render__, staticRenderFns: __vue_staticRenderFns__ },
     __vue_inject_styles__,
     __vue_script__,
     __vue_scope_id__,
     __vue_is_functional_template__,
     __vue_module_identifier__,
+    false,
+    undefined,
     undefined,
     undefined
   );
 
-export { JsonExcel as default };
+export { __vue_component__ as default };
